@@ -13,7 +13,7 @@ from cv_bridge import CvBridge
 
 class Streamer:
     def __init__(self):
-        rospy.init_node('dummy_name')
+        rospy.init_node('dummy_name', anonymous=True)
         self.parse_rosparam()
         self.publisher = rospy.Publisher('image_raw', Image, queue_size=1)
         self.setup_capture_device(exit_on_error=True)
