@@ -13,13 +13,13 @@ from cv_bridge import CvBridge
 
 class Streamer:
     def __init__(self, resource):
-        self.resource = resource
+        self.full_resource_path = "/dev/video" + str(resource)
         self.running = False
         self.parse_rosparam()
         success = self.setup_capture_device()
         if not success:
             return
-        self.publisher = rospy.Publisher(self._camera_name + str(self.resource) + '/image_raw', Image, queue_size=1)
+        self.publisher = rospy.Publisher(self._camera_name + str(resource) + '/image_raw', Image, queue_size=1)
         self.buffer = []
         self.bridge = CvBridge()
         self._lock = threading.Lock()
@@ -32,18 +32,17 @@ class Streamer:
 
     def setup_capture_device(self):
         success = False
-        resource = "/dev/video" + str(self.resource)
-        if not os.path.exists(resource):
-            rospy.logerr("Device %s does not exist.", resource)
+        if not os.path.exists(self.full_resource_path):
+            rospy.logerr("Device %s does not exist.", self.full_resource_path)
             return success
-        rospy.loginfo("Trying to open resource: %s", resource)
-        self.cap = cv2.VideoCapture(resource)
+        rospy.loginfo("Trying to open resource: %s", self.full_resource_path)
+        self.cap = cv2.VideoCapture(self.full_resource_path)
         if not self.cap.isOpened():
-            rospy.logerr(f"Error opening resource: {resource}")
-            rospy.loginfo("opencv VideoCapture can't open it")
-            rospy.loginfo("The device %s is possibly in use. You could try reconnecting the camera.", resource)
+            rospy.logerr(f"Error opening resource: {self.full_resource_path}")
+            rospy.loginfo("opencv VideoCapture can't open it.")
+            rospy.loginfo("The device %s is possibly in use. You could try reconnecting the camera.", self.full_resource_path)
         if self.cap.isOpened():
-            rospy.loginfo("Correctly opened resource.")
+            rospy.loginfo(f"Correctly opened resource {self.full_resource_path}.")
             success = True
         return success
 
@@ -71,10 +70,10 @@ class Streamer:
             rval, frame = self.cap.read()
             self.running = rval
             if not rval:
-                rospy.logwarn("The frame has not been captured. You could try reconnecting the camera.")
+                rospy.logwarn(f"The frame has not been captured. You could try reconnecting the camera resource {self.full_resource_path}.")
                 rospy.sleep(3)
                 if self._retry_on_fail:
-                    rospy.loginfo("Searching for the device...")
+                    rospy.loginfo(f"Searching for the device {self.full_resource_path}...")
                     self.setup_capture_device(exit_on_error=False)
             else:
                 with self._lock:
@@ -115,6 +114,7 @@ def main():
         streamers.append(Streamer(parsed_video_stream_provider))
     else:
         rospy.logerr("Pass either list or an integer as video_stream_provider to video_stream_opencv node.")
+        rospy.loginfo(f"Arguments provided: {video_stream_provider}")
         exit(1)
     running = True
     while running and not rospy.is_shutdown:
