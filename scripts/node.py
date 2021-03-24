@@ -27,8 +27,10 @@ class Streamer:
         self.start_publishing()
 
     def __del__(self):
-        if hasattr(self, '_thread'):
-            self._thread.join()
+        if hasattr(self, '_capture_thread'):
+            self._capture_thread.join()
+        if hasattr(self, '_publishing_thread'):
+            self._publishing_thread.join()
 
     def setup_capture_device(self):
         success = False
@@ -87,7 +89,7 @@ class Streamer:
         self.publisher.publish(imgmsg)
 
     def start_publishing(self):
-        self._publishing_thread = threading.Thread(target=self.publishing())
+        self._publishing_thread = threading.Thread(target=self.publishing)
         self._publishing_thread.start()
 
     def publishing(self):
