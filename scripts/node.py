@@ -12,14 +12,14 @@ from cv_bridge import CvBridge
 
 
 class Streamer:
-    def __init__(self, resource):
+    def __init__(self, resource, node_id=0):
         self.full_resource_path = "/dev/video" + str(resource)
         self.running = False
         self.parse_rosparam()
         success = self.setup_capture_device()
         if not success:
             return
-        self.publisher = rospy.Publisher(self._camera_name + str(resource) + '/image_raw', Image, queue_size=1)
+        self.publisher = rospy.Publisher(self._camera_name + str(node_id) + '/image_raw', Image, queue_size=1)
         self.buffer = []
         self.bridge = CvBridge()
         self._lock = threading.Lock()
@@ -84,7 +84,7 @@ class Streamer:
                     self.buffer.append(frame)
 
     def publish_image(self, image):
-        imgmsg = self.bridge.cv2_to_imgmsg(image)
+        imgmsg = self.bridge.cv2_to_imgmsg(image, 'bgr8')
         imgmsg.header.frame_id = self._frame_id
         self.publisher.publish(imgmsg)
 
@@ -108,10 +108,13 @@ def main():
     rospy.init_node('dummy_name', anonymous=True)
     video_stream_provider = Streamer.get_param("~video_stream_provider")
     parsed_video_stream_provider = eval(video_stream_provider)
+
+    node_id = 0
     streamers = []
     if isinstance(parsed_video_stream_provider, list):
         for resource in parsed_video_stream_provider:
-            streamers.append(Streamer(resource))
+            streamers.append(Streamer(resource, node_id))
+            node_id += 1
     elif isinstance(parsed_video_stream_provider, int):
         streamers.append(Streamer(parsed_video_stream_provider))
     else:
