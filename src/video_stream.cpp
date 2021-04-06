@@ -279,28 +279,31 @@ virtual void subscribe() {
     NODELET_INFO_STREAM("Camera reports FPS: " << reported_camera_fps);
   else
     NODELET_INFO_STREAM("Backend can't provide camera FPS information");
-
-  cap->set(cv::CAP_PROP_FPS, latest_config.set_camera_fps);
+  if (!latest_config.remove_suspicious_calls)
+    cap->set(cv::CAP_PROP_FPS, latest_config.set_camera_fps);
   if(!cap->isOpened()){
     NODELET_ERROR_STREAM("Could not open the stream.");
     return;
   }
-  if (latest_config.width != 0 && latest_config.height != 0){
-    cap->set(cv::CAP_PROP_FRAME_WIDTH, latest_config.width);
-    cap->set(cv::CAP_PROP_FRAME_HEIGHT, latest_config.height);
-  }
 
-  cap->set(cv::CAP_PROP_BRIGHTNESS, latest_config.brightness);
-  cap->set(cv::CAP_PROP_CONTRAST, latest_config.contrast);
-  cap->set(cv::CAP_PROP_HUE, latest_config.hue);
-  cap->set(cv::CAP_PROP_SATURATION, latest_config.saturation);
+  if (!latest_config.remove_suspicious_calls) {
+    if (latest_config.width != 0 && latest_config.height != 0){
+      cap->set(cv::CAP_PROP_FRAME_WIDTH, latest_config.width);
+      cap->set(cv::CAP_PROP_FRAME_HEIGHT, latest_config.height);
+    }
 
-  if (latest_config.auto_exposure) {
-    cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
-    latest_config.exposure = 0.5;
-  } else {
-    cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
-    cap->set(cv::CAP_PROP_EXPOSURE, latest_config.exposure);
+    cap->set(cv::CAP_PROP_BRIGHTNESS, latest_config.brightness);
+    cap->set(cv::CAP_PROP_CONTRAST, latest_config.contrast);
+    cap->set(cv::CAP_PROP_HUE, latest_config.hue);
+    cap->set(cv::CAP_PROP_SATURATION, latest_config.saturation);
+
+    if (latest_config.auto_exposure) {
+      cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
+      latest_config.exposure = 0.5;
+    } else {
+      cap->set(cv::CAP_PROP_AUTO_EXPOSURE, 0.25);
+      cap->set(cv::CAP_PROP_EXPOSURE, latest_config.exposure);
+    }
   }
 
   try {
@@ -387,6 +390,7 @@ virtual void configCallback(VideoStreamConfig& new_config, uint32_t level) {
   NODELET_INFO_STREAM("Flip vertical image is: " << ((new_config.flip_vertical)?"true":"false"));
   NODELET_INFO_STREAM("Video start frame is: " << new_config.start_frame);
   NODELET_INFO_STREAM("Video stop frame is: " << new_config.stop_frame);
+  NODELET_INFO_STREAM("Removing suspicious calls is: " << new_config.remove_suspicious_calls);
 
   if (new_config.width != 0 && new_config.height != 0)
   {
