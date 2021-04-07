@@ -62,8 +62,8 @@ image_transport::CameraPublisher pub;
 boost::shared_ptr<dynamic_reconfigure::Server<VideoStreamConfig> > dyn_srv;
 VideoStreamConfig config;
 std::mutex q_mutex, s_mutex, c_mutex, p_mutex;
-std::queue<cv::Mat> framesQueue;
-cv::Mat frame;
+std::queue<std::pair<cv::Mat, ros::Time>> framesQueue;
+std::pair<cv::Mat, ros::Time> frame_pair;
 boost::shared_ptr<cv::VideoCapture> cap;
 std::string video_stream_provider;
 std::string video_stream_provider_type;
@@ -159,7 +159,7 @@ virtual void do_capture() {
             while (framesQueue.size() > latest_config.buffer_queue_size) {
               framesQueue.pop();
             }
-            framesQueue.push(frame.clone());
+            framesQueue.push(std::make_pair<cv::Mat, ros::Time>(frame.clone(), ros::Time::now()));
         }
     }
     NODELET_DEBUG("Capture thread finished");
@@ -180,17 +180,19 @@ virtual void do_publish(const ros::TimerEvent& event) {
     {
         std::lock_guard<std::mutex> g(q_mutex);
         if (!framesQueue.empty()){
-            frame = framesQueue.front();
+            frame_pair = framesQueue.front();
             framesQueue.pop();
             is_new_image = true;
         }
     }
 
     // Check if grabbed frame is actually filled with some content
-    if(!frame.empty()) {
+    if(!frame_pair.first.empty()) {
         // From http://docs.opencv.org/modules/core/doc/operations_on_arrays.html#void flip(InputArray src, OutputArray dst, int flipCode)
         // FLIP_HORIZONTAL == 1, FLIP_VERTICAL == 0 or FLIP_BOTH == -1
         // Flip the image if necessary
+	const cv::Mat& frame = frame_pair.first;
+	const ros::Time& timestamp = frame_pair.second;
         if (is_new_image){
           if (latest_config.flip_horizontal && latest_config.flip_vertical)
             cv::flip(frame, frame, -1);
@@ -218,7 +220,7 @@ virtual void do_publish(const ros::TimerEvent& event) {
             cam_info_msg = get_default_camera_info_from_image(msg);
         }
         // The timestamps are in sync thanks to this publisher
-        pub.publish(*msg, cam_info_msg, ros::Time::now());
+        pub.publish(*msg, cam_info_msg, timestamp);
     }
 }
 
