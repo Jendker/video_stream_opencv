@@ -29,7 +29,7 @@
     <!-- if show a image_view window subscribed to the generated stream -->
 	<arg name="visualize" default="false"/>
     <!-- rmoves suspicious calls from OpenCV VideoCapture object -->
-	<arg name="remove_suspicious_calls" default="false"/>
+	<arg name="remove_suspicious_calls" default="true"/>
 
 
    
