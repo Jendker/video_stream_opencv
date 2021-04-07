@@ -159,6 +159,23 @@ virtual void do_capture() {
             while (framesQueue.size() > latest_config.buffer_queue_size) {
               framesQueue.pop();
             }
+            if (!frame_pair.first.empty()) {
+    	      cv::Mat diff;
+              // "channels" is a vector of 3 Mat arrays:
+	          std::vector<cv::Mat> prev_channels(3);
+	          std::vector<cv::Mat> new_channels(3);
+              // split img:
+              cv::split(first_frame.first, prev_channels);
+	          cv::split(frame, new_channels);
+	          bool same = true;
+	          for (int i=0; i<3; i++) {
+                diff = prev_channels[i] != new_channels[i];
+                same = cv::countNonZero(diff) == 0;
+                if (!same)
+	              break;
+	          }
+	        NODELET_INFO("Images same %d", same);
+	        }
             framesQueue.push(std::make_pair<cv::Mat, ros::Time>(frame.clone(), ros::Time::now()));
         }
     }
