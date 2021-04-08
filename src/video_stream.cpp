@@ -191,8 +191,8 @@ virtual void do_publish(const ros::TimerEvent& event) {
         // From http://docs.opencv.org/modules/core/doc/operations_on_arrays.html#void flip(InputArray src, OutputArray dst, int flipCode)
         // FLIP_HORIZONTAL == 1, FLIP_VERTICAL == 0 or FLIP_BOTH == -1
         // Flip the image if necessary
-	const cv::Mat& frame = frame_pair.first;
-	const ros::Time& timestamp = frame_pair.second;
+        const cv::Mat& frame = frame_pair.first;
+        const ros::Time& timestamp = frame_pair.second;
         if (is_new_image){
           if (latest_config.flip_horizontal && latest_config.flip_vertical)
             cv::flip(frame, frame, -1);
@@ -221,6 +221,7 @@ virtual void do_publish(const ros::TimerEvent& event) {
         }
         // The timestamps are in sync thanks to this publisher
         pub.publish(*msg, cam_info_msg, timestamp);
+        frame_pair.first = cv::Mat();
     }
 }
 
