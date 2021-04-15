@@ -154,6 +154,12 @@ virtual void do_capture() {
         }
 
         if(!frame.empty()) {
+            if ((latest_config.width != 0 && latest_config.height != 0) && (latest_config.width != frame.size().width || latest_config.height != frame.size().height)) {
+                cv::Mat target_frame;
+                cv::Size target_size(latest_config.width, latest_config.height);
+                cv::resize(frame, target_frame, target_size, 0, 0);
+                frame = target_frame;
+            }
             std::lock_guard<std::mutex> g(q_mutex);
             // accumulate only until max_queue_size
             while (framesQueue.size() > latest_config.buffer_queue_size) {
@@ -288,10 +294,11 @@ virtual void subscribe() {
     return;
   }
 
-  if (latest_config.width != 0 && latest_config.height != 0){
-    cap->set(cv::CAP_PROP_FRAME_WIDTH, latest_config.width);
-    cap->set(cv::CAP_PROP_FRAME_HEIGHT, latest_config.height);
-  }
+// Disabling for now as some cameras are not compatible
+//  if (latest_config.width != 0 && latest_config.height != 0){
+//    cap->set(cv::CAP_PROP_FRAME_WIDTH, latest_config.width);
+//    cap->set(cv::CAP_PROP_FRAME_HEIGHT, latest_config.height);
+//  }
 
   if (!latest_config.remove_suspicious_calls) {
     cap->set(cv::CAP_PROP_BRIGHTNESS, latest_config.brightness);
