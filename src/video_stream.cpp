@@ -63,7 +63,6 @@ boost::shared_ptr<dynamic_reconfigure::Server<VideoStreamConfig> > dyn_srv;
 VideoStreamConfig config;
 std::mutex q_mutex, s_mutex, c_mutex, p_mutex;
 std::queue<std::pair<cv::Mat, ros::Time>> framesQueue;
-std::pair<cv::Mat, ros::Time> frame_pair;
 boost::shared_ptr<cv::VideoCapture> cap;
 std::string video_stream_provider;
 std::string video_stream_provider_type;
@@ -172,23 +171,12 @@ virtual void do_capture() {
 }
 
 virtual void do_publish(const ros::TimerEvent& event) {
-    bool is_new_image = false;
-    sensor_msgs::ImagePtr msg;
-    std_msgs::Header header;
-    VideoStreamConfig latest_config;
-
-    {
-      std::lock_guard<std::mutex> lock(p_mutex);
-      latest_config = config;
-    }
-
-    header.frame_id = latest_config.frame_id;
+    std::pair<cv::Mat, ros::Time> frame_pair;
     {
         std::lock_guard<std::mutex> g(q_mutex);
         if (!framesQueue.empty()){
             frame_pair = framesQueue.front();
             framesQueue.pop();
-            is_new_image = true;
         }
     }
 
@@ -199,14 +187,19 @@ virtual void do_publish(const ros::TimerEvent& event) {
         // Flip the image if necessary
         const cv::Mat& frame = frame_pair.first;
         const ros::Time& timestamp = frame_pair.second;
-        if (is_new_image){
-          if (latest_config.flip_horizontal && latest_config.flip_vertical)
-            cv::flip(frame, frame, -1);
-          else if (latest_config.flip_horizontal)
-            cv::flip(frame, frame, 1);
-          else if (latest_config.flip_vertical)
-            cv::flip(frame, frame, 0);
+        VideoStreamConfig latest_config;
+        {
+          std::lock_guard<std::mutex> lock(p_mutex);
+          latest_config = config;
         }
+        if (latest_config.flip_horizontal && latest_config.flip_vertical)
+          cv::flip(frame, frame, -1);
+        else if (latest_config.flip_horizontal)
+          cv::flip(frame, frame, 1);
+        else if (latest_config.flip_vertical)
+          cv::flip(frame, frame, 0);
+        std_msgs::Header header;
+        header.frame_id = latest_config.frame_id;
         cv_bridge::CvImagePtr cv_image =
           boost::make_shared<cv_bridge::CvImage>(header, "bgr8", frame);
         if (latest_config.output_encoding != "bgr8")
@@ -219,7 +212,7 @@ virtual void do_publish(const ros::TimerEvent& event) {
                                  << ": " << ex.what());
           }
         }
-        msg = cv_image->toImageMsg();
+        sensor_msgs::ImagePtr msg = cv_image->toImageMsg();
         // Create a default camera info if we didn't get a stored one on initialization
         if (cam_info_msg.distortion_model == ""){
             NODELET_WARN_STREAM("No calibration file given, publishing a reasonable default camera info.");
@@ -227,7 +220,6 @@ virtual void do_publish(const ros::TimerEvent& event) {
         }
         // The timestamps are in sync thanks to this publisher
         pub.publish(*msg, cam_info_msg, timestamp);
-        frame_pair.first = cv::Mat();
     }
 }
 
