@@ -180,13 +180,14 @@ virtual void do_publish(const ros::TimerEvent& event) {
         }
     }
 
+    const cv::Mat& frame = frame_pair.first;
+    const ros::Time& timestamp = frame_pair.second;
+
     // Check if grabbed frame is actually filled with some content
-    if(!frame_pair.first.empty()) {
+    if(!frame.empty()) {
         // From http://docs.opencv.org/modules/core/doc/operations_on_arrays.html#void flip(InputArray src, OutputArray dst, int flipCode)
         // FLIP_HORIZONTAL == 1, FLIP_VERTICAL == 0 or FLIP_BOTH == -1
         // Flip the image if necessary
-        const cv::Mat& frame = frame_pair.first;
-        const ros::Time& timestamp = frame_pair.second;
         VideoStreamConfig latest_config;
         {
           std::lock_guard<std::mutex> lock(p_mutex);
